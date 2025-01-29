@@ -43,6 +43,10 @@ function App() {
     getAccounts();
   }, []);
 
+  function timeo(delay) {
+    return new Promise( res => setTimeout(res, delay) );
+  }
+
   async function getTokenBalance() {
     setLoader("Loading...")
 
@@ -53,8 +57,6 @@ function App() {
 
     const alchemy = new Alchemy(config);
     const data = await alchemy.core.getTokenBalances(userAddress);
-    
-    setResults(data);
 
     const tokenDataPromises = [];
 
@@ -65,10 +67,35 @@ function App() {
       tokenDataPromises.push(tokenData);
     }
 
-    setTokenDataObjects(await Promise.all(tokenDataPromises));
+    let tokensData = await Promise.all(tokenDataPromises);
+
+    const realTokens = [];
+    const validIndices = [];
+
+    let tokenBal = {}
+
+    for(let i = 0; i < tokensData.length; i++) {
+      if(tokensData[i].name != "" && tokensData[i].symbol != "") {
+        realTokens.push(tokensData[i]);
+        validIndices.push(i);
+      }
+    }
+
+    tokenBal = {
+      address: data.address,
+      tokenBalances: data.tokenBalances.filter((_, index) => 
+        validIndices.includes(index)
+      )
+    }
+
+    setResults(tokenBal);
+
+    setTokenDataObjects(realTokens);
+
     setHasQueried(true);
     setLoader('');
   }
+
   return (
     <Box w="100vw">
       <Center>
