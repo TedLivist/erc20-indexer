@@ -22,6 +22,8 @@ function App() {
   const [hasQueried, setHasQueried] = useState(false);
   const [tokenDataObjects, setTokenDataObjects] = useState([]);
 
+  const [loader, setLoader] = useState('');
+
   useEffect(() => {
     async function getAccounts() {
       const accounts = await provider.send('eth_requestAccounts', []);
@@ -42,6 +44,8 @@ function App() {
   }, []);
 
   async function getTokenBalance() {
+    setLoader("Loading...")
+
     const config = {
       apiKey: import.meta.env.VITE_API_KEY,
       network: Network.ETH_MAINNET,
@@ -49,7 +53,6 @@ function App() {
 
     const alchemy = new Alchemy(config);
     const data = await alchemy.core.getTokenBalances(userAddress);
-
     
     setResults(data);
 
@@ -64,6 +67,7 @@ function App() {
 
     setTokenDataObjects(await Promise.all(tokenDataPromises));
     setHasQueried(true);
+    setLoader('');
   }
   return (
     <Box w="100vw">
@@ -105,6 +109,8 @@ function App() {
           Check ERC-20 Token Balances
         </Button>
 
+        <div className='loader'>{loader}</div>
+
         <Heading my={36}>ERC-20 token balances:</Heading>
 
         {hasQueried ? (
@@ -116,7 +122,7 @@ function App() {
                   color="white"
                   bg="blue"
                   w={'20vw'}
-                  key={e.id}
+                  key={i}
                 >
                   <Box>
                     <b>Symbol:</b> ${tokenDataObjects[i].symbol}&nbsp;
