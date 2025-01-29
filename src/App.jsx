@@ -12,7 +12,6 @@ import {
 import { Alchemy, Network, Utils } from 'alchemy-sdk';
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
-// import { configDotenv } from 'dotenv';
 
 const provider = new ethers.providers.Web3Provider(window.ethereum);
 
@@ -21,6 +20,9 @@ function App() {
   const [results, setResults] = useState([]);
   const [hasQueried, setHasQueried] = useState(false);
   const [tokenDataObjects, setTokenDataObjects] = useState([]);
+
+  const [loader, setLoader] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     async function getAccounts() {
@@ -41,7 +43,25 @@ function App() {
     getAccounts();
   }, []);
 
+  function errorCheck(string) {
+    let errorMsg = 'Invalid address';
+    const lastFourChars = string.substr(-4)
+
+    if(lastFourChars == ".eth") {
+      setError('')
+    } else if(string.length < 42 || string.length > 42) {
+      setError(errorMsg)
+    } else if(!string.startsWith('0x')) {
+      setError(errorMsg)
+    } else {
+      setError('')
+    }
+  }
+
   async function getTokenBalance() {
+    setLoader("Loading...")
+    errorCheck(userAddress)
+
     const config = {
       apiKey: import.meta.env.VITE_API_KEY,
       network: Network.ETH_MAINNET,
@@ -49,9 +69,6 @@ function App() {
 
     const alchemy = new Alchemy(config);
     const data = await alchemy.core.getTokenBalances(userAddress);
-
-    
-    setResults(data);
 
     const tokenDataPromises = [];
 
@@ -62,9 +79,34 @@ function App() {
       tokenDataPromises.push(tokenData);
     }
 
-    setTokenDataObjects(await Promise.all(tokenDataPromises));
+    let tokensData = await Promise.all(tokenDataPromises);
+
+    const realTokens = [];
+    const validIndices = [];
+
+    let tokenBal = {}
+
+    for(let i = 0; i < tokensData.length; i++) {
+      if(tokensData[i].name != "" && tokensData[i].symbol != "") {
+        realTokens.push(tokensData[i]);
+        validIndices.push(i);
+      }
+    }
+
+    tokenBal = {
+      address: data.address,
+      tokenBalances: data.tokenBalances.filter((_, index) => 
+        validIndices.includes(index)
+      )
+    }
+
+    setResults(tokenBal);
+    setTokenDataObjects(realTokens);
+
     setHasQueried(true);
+    setLoader('');
   }
+
   return (
     <Box w="100vw">
       <Center>
@@ -101,11 +143,24 @@ function App() {
           fontSize={24}
           value={userAddress}
         />
+
+        {error && (
+          <div className='loader'>{error}</div>
+        )}
+
         <Button fontSize={20} onClick={getTokenBalance} mt={36} bgColor="blue">
           Check ERC-20 Token Balances
         </Button>
 
+        {(loader && (error.length == 0)) && (
+          <div className='loader'>{loader}</div>
+        )}
+
         <Heading my={36}>ERC-20 token balances:</Heading>
+
+        <Text>
+          This app displays only ERC20 tokens that have valid names and symbols
+        </Text>
 
         {hasQueried ? (
           <SimpleGrid w={'90vw'} columns={4} spacing={24}>
@@ -115,8 +170,8 @@ function App() {
                   flexDir={'column'}
                   color="white"
                   bg="blue"
-                  w={'20vw'}
-                  key={e.id}
+                  w={'21vw'}
+                  key={i}
                 >
                   <Box>
                     <b>Symbol:</b> ${tokenDataObjects[i].symbol}&nbsp;
