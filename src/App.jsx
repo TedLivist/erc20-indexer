@@ -12,7 +12,6 @@ import {
 import { Alchemy, Network, Utils } from 'alchemy-sdk';
 import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
-// import { configDotenv } from 'dotenv';
 
 const provider = new ethers.providers.Web3Provider(window.ethereum);
 
@@ -23,6 +22,7 @@ function App() {
   const [tokenDataObjects, setTokenDataObjects] = useState([]);
 
   const [loader, setLoader] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     async function getAccounts() {
@@ -43,12 +43,24 @@ function App() {
     getAccounts();
   }, []);
 
-  function timeo(delay) {
-    return new Promise( res => setTimeout(res, delay) );
+  function errorCheck(string) {
+    let errorMsg = 'Invalid address';
+    const lastFourChars = string.substr(-4)
+
+    if(lastFourChars == ".eth") {
+      setError('')
+    } else if(string.length < 42 || string.length > 42) {
+      setError(errorMsg)
+    } else if(!string.startsWith('0x')) {
+      setError(errorMsg)
+    } else {
+      setError('')
+    }
   }
 
   async function getTokenBalance() {
     setLoader("Loading...")
+    errorCheck(userAddress)
 
     const config = {
       apiKey: import.meta.env.VITE_API_KEY,
@@ -89,7 +101,6 @@ function App() {
     }
 
     setResults(tokenBal);
-
     setTokenDataObjects(realTokens);
 
     setHasQueried(true);
@@ -132,13 +143,24 @@ function App() {
           fontSize={24}
           value={userAddress}
         />
+
+        {error && (
+          <div className='loader'>{error}</div>
+        )}
+
         <Button fontSize={20} onClick={getTokenBalance} mt={36} bgColor="blue">
           Check ERC-20 Token Balances
         </Button>
 
-        <div className='loader'>{loader}</div>
+        {(loader && (error.length == 0)) && (
+          <div className='loader'>{loader}</div>
+        )}
 
         <Heading my={36}>ERC-20 token balances:</Heading>
+
+        <Text>
+          This app displays only ERC20 tokens that have valid names and symbols
+        </Text>
 
         {hasQueried ? (
           <SimpleGrid w={'90vw'} columns={4} spacing={24}>
@@ -148,7 +170,7 @@ function App() {
                   flexDir={'column'}
                   color="white"
                   bg="blue"
-                  w={'20vw'}
+                  w={'21vw'}
                   key={i}
                 >
                   <Box>
